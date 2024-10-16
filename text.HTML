@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صفحة HTML بسيطة</title>
+</head>
+<body>
+    <header>
+        <h1>مرحبًا بك في موقعي</h1>
+    </header>
+
+    <main>
+        <p>هذه صفحة HTML بسيطة تحتوي على عنوان وفقرة نصية.</p>
+    </main>
+
+    <footer>
+        <p>حقوق النشر © 2024</p>
+    </footer>
+</body>
+</html>      text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #1a5f7a;
+        }
+        .prayer-times {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        .prayer-time {
+            background-color: #1a5f7a;
+            color: white;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 10px;
+            width: 120px;
+        }
+        #location-info {
+            margin-top: 20px;
+            font-style: italic;
+        }
+        #permission-message {
+            background-color: #ffc107;
+            color: #333;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>مواقيت الصلاة</h1>
+        <div id="permission-message">
+            يرجى السماح بالوصول إلى موقعك لعرض مواقيت الصلاة الدقيقة لمنطقتك.
+        </div>
+        <div class="prayer-times" id="prayer-times"></div>
+        <div id="location-info"></div>
+    </div>
+
+    <script>
+        function toArabicNumerals(num) {
+            const arabicNumbers = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+            return num.toString().split('').map(digit => arabicNumbers[parseInt(digit)]).join('');
+        }
+
+        function to12HourFormat(time) {
+            let [hours, minutes] = time.split(':');
+            hours = parseInt(hours);
+            let period = hours >= 12 ? 'م' : 'ص';
+            hours = hours % 12 || 12;
+            return `${toArabicNumerals(hours)}:${toArabicNumerals(minutes)} ${period}`;
+        }
+
+        function getPrayerTimes(latitude, longitude) {
+            fetch(`https://api.aladhan.com/v1/timings?latitude=${latitude}&longitude=${longitude}&method=4`)
+                .then(response => response.json())
+                .then(data => {
+                    const timings = data.data.timings;
+                    const prayerTimes = document.getElementById('prayer-times');
+                    prayerTimes.innerHTML = '';
+                    ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].forEach(prayer => {
+                        const div = document.createElement('div');
+                        div.className = 'prayer-time';
+                        div.innerHTML = `<h3>${getPrayerNameInArabic(prayer)}</h3><p>${to12HourFormat(timings[prayer])}</p>`;
+                        prayerTimes.appendChild(div);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function getPrayerNameInArabic(prayer) {
+            const arabicNames = {
+                'Fajr': 'الفجر',
+                'Dhuhr': 'الظهر',
+                'Asr': 'العصر',
+                'Maghrib': 'المغرب',
+                'Isha': 'العشاء'
+            };
+            return arabicNames[prayer];
+        }
+
+        function getLocationName(latitude, longitude) {
+            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&accept-language=ar`)
+                .then(response => response.json())
+                .then(data => {
+                    const city = data.address.city || data.address.town || data.address.village || '';
+                    const state = data.address.state || '';
+                    const country = data.address.country || '';
+                    document.getElementById('location-info').textContent = `الموقع: ${city}, ${state}, ${country}`;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        function showPermissionMessage() {
+            document.getElementById('permission-message').style.display = 'block';
+        }
+
+        function hidePermissionMessage() {
+            document.getElementById('permission-message').style.display = 'none';
+        }
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                hidePermissionMessage();
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                getPrayerTimes(latitude, longitude);
+                getLocationName(latitude, longitude);
+            }, function(error) {
+                showPermissionMessage();
+                console.error("Error: " + error.message);
+            });
+        } else {
+            console.log("Geolocation is not supported by this browser.");
+        }
+    </script>
+</body>
+</html>
